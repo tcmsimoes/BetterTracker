@@ -118,7 +118,7 @@ local function checkProfObjective(quests, objectiveGroup)
             complQuestCount = complQuestCount +1
         end
     end
-    
+
     if complQuestCount >= maxQuestCount then
         objectiveComplete = true
     end
@@ -143,7 +143,7 @@ local function getKPweeklyRemaining(profession)
         end
     end)
 
-    return allObjRemaining
+    return (allObjRemaining > 0) and tostring(allObjRemaining) or ""
 end
 
 local function getKPprogress(profession)
@@ -193,21 +193,21 @@ local function createBadge(point)
     badge:SetSize(20, 20)
     badge:SetFrameStrata("MEDIUM")
     badge:SetFrameLevel(ProfessionMicroButton:GetFrameLevel() + 10)
-    badge:SetPoint(point, ProfessionMicroButton, "TOP", -2, 6)
+    badge:SetPoint(point, ProfessionMicroButton, "TOP", 0, 6)
 
     badge.bg = badge:CreateTexture(nil, "BACKGROUND")
     badge.bg:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask") 
     badge.bg:SetAllPoints(badge)
-    badge.bg:SetVertexColor(0, 0, 0, 0.4)
+    badge.bg:SetVertexColor(0, 0, 0)
 
     badge.border = badge:CreateTexture(nil, "OVERLAY")
     badge.border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     badge.border:SetSize(42, 42)
-    badge.border:SetPoint("CENTER", badge, "CENTER", 10, -10)
+    badge.border:SetPoint("CENTER", badge, "CENTER", 8, -8)
     badge.border:SetVertexColor(1, 0.8, 0, 0.6)
 
     badge.text = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    badge.text:SetPoint("CENTER", badge, "CENTER", 2, -1)
+    badge.text:SetPoint("CENTER", badge, "CENTER", 0, 0)
 
     return badge
 end
@@ -215,20 +215,22 @@ end
 local f = CreateFrame("Frame")
 
 function f:UpdateProf1Badge()
-    local text = ""..getKPweeklyRemaining(self.prof1)
+    local text = getKPweeklyRemaining(self.prof1)
 
     if text and #text > 0 then
         self.badgeProf1.text:SetText(text)
+        self.badgeProf1:Show()
     else
         self.badgeProf1:Hide()
     end
 end
 
 function f:UpdateProf2Badge()
-    local text = ""..getKPweeklyRemaining(self.prof2)
+    local text = getKPweeklyRemaining(self.prof2)
 
     if text and #text > 0 then
         self.badgeProf2.text:SetText(text)
+        self.badgeProf2:Show()
     else
         self.badgeProf2:Hide()
     end
@@ -239,6 +241,7 @@ f.badgeProf2 = createBadge("TOPLEFT")
 
 f:RegisterEvent("PLAYER_LOGIN")
 f:RegisterEvent("QUEST_TURNED_IN")
+f:RegisterEvent("BAG_UPDATE")
 f:SetScript("OnEvent", function(self, event, ...)
     local prof1, prof2 = GetProfessions()
 
@@ -277,11 +280,11 @@ local function composeProfText(profession)
             if not objCompleted then
                 detailedText = detailedText .. addObjectiveText(objGroup, objRemaining)
             end
-
-            if detailedText == "" then
-                detailedText = "  Week done!"
-            end
         end)
+
+        if #detailedText <= 0 then
+            detailedText = "  Week done!"
+        end
     else
         detailedText = "  All done!"
     end
