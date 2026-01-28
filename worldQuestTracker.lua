@@ -186,17 +186,17 @@ end
 
 f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:RegisterEvent("QUEST_TURNED_IN")
+f:RegisterEvent("QUEST_REMOVED")
 f:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_ENTERING_WORLD" then
         C_Timer.After(10, ScanForGoldQuests)
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
-    elseif event == "QUEST_TURNED_IN" then
+    elseif event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED" then
         local questID = ...
 
         if FOUND_WORLD_QUESTS and FOUND_WORLD_QUESTS[questID] then
             FOUND_WORLD_QUESTS[questID] = nil
-            
-            -- Debug print (optional)
+
             -- print("|cFF00FF00[GoldScanner]:|r Quest " .. questID .. " completed. Removing from list.")
 
             RefreshWorldQuestsPanel()
