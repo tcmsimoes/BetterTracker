@@ -16,7 +16,7 @@ local WORLD_QUESTS_TO_SCAN = {}
 local FOUND_WORLD_QUESTS = {}
 
 
-local function createBadge(point)
+local function CreateBadge(point)
     local badge = CreateFrame("Frame", "MyWorldQuestBadge", QuestLogMicroButton)
     badge:SetSize(20, 20)
     badge:SetFrameStrata("MEDIUM")
@@ -43,7 +43,7 @@ end
 
 local f = CreateFrame("Frame")
 
-f.worldQuestBadge = createBadge("TOP")
+f.worldQuestBadge = CreateBadge("TOP")
 
 local function UpdateUI(count)
     if count and count > 0 then
@@ -82,31 +82,42 @@ local function GetTotalGoldFromQuest(questID)
     return math.floor((tonumber(totalMoney) / 10000)) * 10000
 end
 
+local function ProcessQuest(questID)
+    local result = 0
+
+    local questTagInfo = C_QuestLog.GetQuestTagInfo(questID)
+
+    if questTagInfo and not C_QuestLog.IsComplete(questID) then
+        --print("Evaluating quest "..id.."/"..qInfo.mapID.."/"..C_QuestLog.GetTitleForQuestID(questID))
+        local goldAmount = GetTotalGoldFromQuest(questID) or 0
+        
+        -- only quests that reward more than 500 gold
+        if goldAmount > (500 * 10000) then
+            local quest = {
+                ID = questID,
+                name = C_QuestLog.GetTitleForQuestID(questID) or "Unknown Quest",
+                amount = goldAmount,
+                tagInfo = questTagInfo,
+                zone = zone
+            }
+            FOUND_WORLD_QUESTS[quest.ID] = quest
+            --print("Found quest "..quest.zoneID.."/"..quest.mapID.."/"..quest.name.." = "..GetMoneyString(quest.amount, true))
+            result = 1
+        end
+    end
+
+    return result
+end
+
+-- Forward declaration due to scan loop
+local ScanForGoldQuests
+
 local function ProcessQuests()
     local count = 0
 
     for questID, zone in pairs(WORLD_QUESTS_TO_SCAN) do
         if not FOUND_WORLD_QUESTS[questID] then
-            local questTagInfo = C_QuestLog.GetQuestTagInfo(questID)
-
-            if questTagInfo and not C_QuestLog.IsComplete(questID) then
-                --print("Evaluating quest "..id.."/"..qInfo.mapID.."/"..C_QuestLog.GetTitleForQuestID(questID))
-                local goldAmount = GetTotalGoldFromQuest(questID) or 0
-                
-                -- only quests that reward more than 500 gold
-                if goldAmount > (500 * 10000) then
-                    local quest = {
-                        ID = questID,
-                        name = C_QuestLog.GetTitleForQuestID(questID) or "Unknown Quest",
-                        amount = goldAmount,
-                        tagInfo = questTagInfo,
-                        zone = zone
-                    }
-                    FOUND_WORLD_QUESTS[quest.ID] = quest
-                    --print("Found quest "..quest.zoneID.."/"..quest.mapID.."/"..quest.name.." = "..GetMoneyString(quest.amount, true))
-                    count = count + 1
-                end
-            end
+            count = count + ProcessQuest(questID)
         end
     end
 
@@ -125,6 +136,7 @@ local function RefreshQuestRewards()
 
     WORLD_QUESTS_TO_SCAN = {}
 
+    -- Staggered scanning to reduce FPS impact
     local function ScanNextMap(index)
         local mapID = mapList[index]
         local quests = C_TaskQuest.GetQuestsOnMap(mapID)
@@ -132,8 +144,10 @@ local function RefreshQuestRewards()
         if quests then
             for _, qInfo in ipairs(quests) do
                 local questID = qInfo.questId or qInfo.questID
+
                 if questID and not WORLD_QUESTS_TO_SCAN[questID] then
                     C_TaskQuest.RequestPreloadRewardData(questID)
+
                     WORLD_QUESTS_TO_SCAN[questID] = MAPS_TO_SCAN[mapID]
                 end
             end
@@ -179,25 +193,40 @@ local function RefreshMaps()
     C_Timer.After(1, RefreshQuestRewards)
 end
 
-function ScanForGoldQuests()
+ScanForGoldQuests = function()
     if UnitAffectingCombat("player") or IsInInstance() then
         C_Timer.After(QUEST_SCAN_RATE, ScanForGoldQuests)
         return
     end
 
+    if f.worldQuestBadge:IsShown() then
+        f.worldQuestBadge.text:SetText("*")
+    end
+
     FOUND_WORLD_QUESTS = {}
 
-    -- RefreshMaps() -> 1s -> RefreshQuestRewards() -> 1s -> ProcessQuests
+    -- Sequence processing, allowing for data to arrive from server
+    -- RefreshMaps() -> 1s -> RefreshQuestRewards() -> 1s -> ProcessQuests -> Queue new scan in 5m
     RefreshMaps()
 end
 
+
+
 f:RegisterEvent("PLAYER_ENTERING_WORLD")
+f:RegisterEvent("QUEST_DATA_LOAD_RESULT")
 f:RegisterEvent("QUEST_TURNED_IN")
 f:RegisterEvent("QUEST_REMOVED")
 f:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_ENTERING_WORLD" then
         C_Timer.After(10, ScanForGoldQuests)
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    elseif event == "QUEST_DATA_LOAD_RESULT" then
+        local questID, success = ...
+        if not FOUND_WORLD_QUESTS then
+            ScanForGoldQuests()
+        elseif success and questID and FOUND_WORLD_QUESTS[questID] then
+            ProcessQuest(questID)
+        end
     elseif event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED" then
         local questID = ...
 
@@ -275,9 +304,9 @@ function WorldQuestsPanelMixin:RefreshList()
     end
 
     local sortedQuests = {}
-    for _, data in pairs(FOUND_WORLD_QUESTS) do
-        data.minutesLeft = C_TaskQuest.GetQuestTimeLeftMinutes(data.ID) or 0
-        table.insert(sortedQuests, data)
+    for _, quest in pairs(FOUND_WORLD_QUESTS) do
+        quest.minutesLeft = C_TaskQuest.GetQuestTimeLeftMinutes(quest.ID) or 0
+        table.insert(sortedQuests, quest)
     end
     table.sort(sortedQuests, function(a, b) return a.minutesLeft < b.minutesLeft end)
 
