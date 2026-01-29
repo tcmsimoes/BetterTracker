@@ -292,6 +292,7 @@ function WorldQuestsPanelMixin:RefreshList()
         local entry = self.pool:Acquire()
     
         entry.layoutIndex = i
+        entry.questID = quest.ID
 
         local atlas, width, height = QuestUtil.GetWorldQuestAtlasInfo(quest.ID, quest.tagInfo, false);
         if atlas then
@@ -320,8 +321,10 @@ function WorldQuestsPanelMixin:RefreshList()
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 
             if GameTooltip:IsOwned(self) then
-                GameTooltip:SetText("Quest Details")
-                GameTooltip:AddLine("\n|rTime remaining: "..FormatQuestTime(quest.minutesLeft))
+                GameTooltip:SetText("Rewards", NORMAL_FONT_COLOR:GetRGB());
+                GameTooltip:AddLine(" ");
+                GameTooltip_AddQuestRewardsToTooltip(GameTooltip, self.questID, TOOLTIP_QUEST_REWARDS_STYLE_NONE);
+                GameTooltip_SetTooltipWaitingForData(GameTooltip, false);
                 GameTooltip:Show()
             end
         end)
@@ -329,6 +332,7 @@ function WorldQuestsPanelMixin:RefreshList()
         entry:SetScript("OnLeave", function(self)
             if GameTooltip:IsOwned(self) then
                 GameTooltip:Hide()
+                GameTooltip.questID = nil
             end
         end)
 
