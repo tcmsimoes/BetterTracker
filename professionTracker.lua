@@ -1,4 +1,4 @@
-local objectives = {
+local OBJECTIVES = {
     [171] = {treasures = {83253, 83255}, treatise = {83725}, weeklyQuest = {84133}, craftingOrders = {}}, --alchemy
     [164] = {treasures = {83256, 83257}, treatise = {83726}, weeklyQuest = {84127}, craftingOrders = {}}, --blacksmithing
     [202] = {treasures = {83260, 83261}, treatise = {83728}, weeklyQuest = {84128}, craftingOrders = {}}, --engineering
@@ -12,7 +12,7 @@ local objectives = {
     [393] = {treasures = {}, treatise = {83734}, weeklyQuest = {83098, 82993, 82992, 83100, 83097}, gathering = {81459, 81460, 81461, 81462, 81463, 81464}} --skinning
 }
 
-local objectiveGroups = {
+local OBJECTIVE_GROUPS = {
     gathering = {isUnique = false, free = true, name = "Gathering"},
     treasures = {isUnique = false, free = true, name = "Treasures/Dirt"},
     treatise = {isUnique = false, free = false, name = "Treatise"},
@@ -21,7 +21,7 @@ local objectiveGroups = {
     disenchanting = {isUnique = false, free = false, name = "Disenchanting"}
 }
 
-local currencies = {
+local CURRENCIES = {
     [171] = {ID = 2785}, --alchemy
     [164] = {ID = 2786}, --blacksmithing
     [202] = {ID = 2788}, --engineering
@@ -35,7 +35,7 @@ local currencies = {
     [393] = {ID = 2794}  --skinning
 }
 
-local function getSubSkillLineID(profession)
+local function GetSubSkillLineID(profession)
     local profTradeSkillLines = C_TradeSkillUI.GetAllProfessionTradeSkillLines()
     local subProfessionName = 'Khaz Algar ' .. profession
     local profInfo
@@ -47,31 +47,31 @@ local function getSubSkillLineID(profession)
     end
 end
 
-local function pathIsMaxedOut(pathID, configID)
+local function IsPathMaxedOut(pathID, configID)
     local pathState = C_ProfSpecs.GetStateForPath(pathID, configID)
     if pathState ~= 2 then return false end
     
     local childIDs = C_ProfSpecs.GetChildrenForPath(pathID)
     if #childIDs > 0 then
         for _,childID in ipairs(childIDs) do
-            if not pathIsMaxedOut(childID, configID) then return false end
+            if not IsPathMaxedOut(childID, configID) then return false end
         end
     end
     return true
 end
 
-local function profHasMaxKP(skillLineID, configID)
+local function HasMaxKP(skillLineID, configID)
     local tabIDs = C_ProfSpecs.GetSpecTabIDsForSkillLine(skillLineID)
     local tabState
     for _,tabID in ipairs(tabIDs) do
         tabState =  C_ProfSpecs.GetStateForTab(tabID, configID)
         if tabState ~= 1 then return false end
-        if not pathIsMaxedOut(C_ProfSpecs.GetRootPathForTab(tabID), configID) then return false end
+        if not IsPathMaxedOut(C_ProfSpecs.GetRootPathForTab(tabID), configID) then return false end
     end
     return true
 end
 
-local function getNodeKP(profession, nodeID)
+local function GetNodeKP(profession, nodeID)
     local nodeInfo = C_Traits.GetNodeInfo(profession.configID, nodeID)
     local nodeCurrKP = nodeInfo.ranksPurchased - 1
     local nodeMaxKP = nodeInfo.maxRanks - 1
@@ -85,7 +85,7 @@ local function getNodeKP(profession, nodeID)
     
     if #nodeInfo.visibleEdges > 0 then
         for _,edge in ipairs(nodeInfo.visibleEdges) do
-            childNodeCurrKP, childNodeMaxKP = getNodeKP(profession, edge.targetNode)
+            childNodeCurrKP, childNodeMaxKP = GetNodeKP(profession, edge.targetNode)
             childNodeCurrKP_sum = childNodeCurrKP_sum + childNodeCurrKP
             childNodeMaxKP_sum = childNodeMaxKP_sum + childNodeMaxKP
         end
@@ -94,7 +94,7 @@ local function getNodeKP(profession, nodeID)
     return nodeCurrKP + childNodeCurrKP_sum, nodeMaxKP + childNodeMaxKP_sum
 end
 
-local function isKPProfession(profession)
+local function IsKPProfession(profession)
     if not profession then return false end
     if not profession.ID or profession.ID == 0 then return false end
     if not profession.skillLineID or profession.skillLineID == 0 then return false end
@@ -104,12 +104,35 @@ local function isKPProfession(profession)
     return true
 end
 
-local function checkProfObjective(quests, objectiveGroup)
+local function GetKPprogress(profession)
+    if not IsKPProfession(profession) then return end
+
+    local currencyInfo = C_CurrencyInfo.GetCurrencyInfo(profession.currencyID)
+    local currKP = currencyInfo.quantity
+    local maxKP = 0
+    
+    local tabIDs = C_ProfSpecs.GetSpecTabIDsForSkillLine(profession.skillLineID)
+    local tabInfo, tabCurrKP, tabMaxKP
+    for _,tabID in ipairs(tabIDs) do
+        tabInfo = C_ProfSpecs.GetTabInfo(tabID)
+        tabCurrKP, tabMaxKP = GetNodeKP(profession, tabInfo.rootNodeID)
+        currKP = currKP + tabCurrKP
+        maxKP = maxKP + tabMaxKP
+    end
+    
+    if currKP > maxKP then
+        currKP = maxKP
+    end
+    
+    return currKP, maxKP
+end
+
+local function CheckProfessionObjective(quests, objectiveGroup)
     local maxQuestCount = #quests
     local complQuestCount = 0
     local objectiveComplete = false
     
-    if objectiveGroups[objectiveGroup].isUnique and maxQuestCount > 1 then
+    if OBJECTIVE_GROUPS[objectiveGroup].isUnique and maxQuestCount > 1 then
         maxQuestCount = 1
     end
     
@@ -126,61 +149,38 @@ local function checkProfObjective(quests, objectiveGroup)
     return objectiveComplete, (maxQuestCount - complQuestCount)
 end
 
-local function checkProfObjectives(profession, callback)
-    for objGroup, _ in pairs(objectives[profession.ID]) do
-        objCompleted, objRemaining = checkProfObjective(objectives[profession.ID][objGroup], objGroup)
+local function CheckProfessionObjectives(profession, callback)
+    for objGroup, _ in pairs(OBJECTIVES[profession.ID]) do
+        objCompleted, objRemaining = CheckProfessionObjective(OBJECTIVES[profession.ID][objGroup], objGroup)
         callback(objRemaining, objCompleted, objGroup)
     end
 end
 
-local function getKPweeklyRemaining(profession)
-    if not isKPProfession(profession) or profHasMaxKP(profession.skillLineID, profession.configID) then return "" end
+local function GetKPweeklyRemaining(profession)
+    if not IsKPProfession(profession) or HasMaxKP(profession.skillLineID, profession.configID) then return 0 end
 
     local allObjRemaining = 0
-    checkProfObjectives(profession, function(objRemaining, objCompleted, objGroup)
-        if objectiveGroups[objGroup].free then
+    CheckProfessionObjectives(profession, function(objRemaining, objCompleted, objGroup)
+        if OBJECTIVE_GROUPS[objGroup].free then
             allObjRemaining = allObjRemaining + objRemaining
         end
     end)
 
-    return (allObjRemaining > 0) and tostring(allObjRemaining) or ""
+    return allObjRemaining
 end
 
-local function getKPprogress(profession)
-    if not isKPProfession(profession) then return end
-
-    local currencyInfo = C_CurrencyInfo.GetCurrencyInfo(profession.currencyID)
-    local currKP = currencyInfo.quantity
-    local maxKP = 0
-    
-    local tabIDs = C_ProfSpecs.GetSpecTabIDsForSkillLine(profession.skillLineID)
-    local tabInfo, tabCurrKP, tabMaxKP
-    for _,tabID in ipairs(tabIDs) do
-        tabInfo = C_ProfSpecs.GetTabInfo(tabID)
-        tabCurrKP, tabMaxKP = getNodeKP(profession, tabInfo.rootNodeID)
-        currKP = currKP + tabCurrKP
-        maxKP = maxKP + tabMaxKP
-    end
-    
-    if currKP > maxKP then
-        currKP = maxKP
-    end
-    
-    return currKP, maxKP
-end
-
-local function getProfessionDetails(profession)
+local function GetProfessionDetails(profession)
     local professionDetails = nil
 
     if profession then
         professionDetails = {}
         professionDetails.ID = select(7, GetProfessionInfo(profession))
         professionDetails.name = select(1, GetProfessionInfo(profession))
-        professionDetails.skillLineID = getSubSkillLineID(professionDetails.name)
+        professionDetails.skillLineID = GetSubSkillLineID(professionDetails.name)
         professionDetails.configID = C_ProfSpecs.GetConfigIDForSkillLine(professionDetails.skillLineID)
 
-        if currencies[professionDetails.ID] then
-            professionDetails.currencyID = currencies[professionDetails.ID].ID
+        if CURRENCIES[professionDetails.ID] then
+            professionDetails.currencyID = CURRENCIES[professionDetails.ID].ID
         end
     end
 
@@ -189,7 +189,7 @@ end
 
 
 
-local function createBadge(point)
+local function CreateBadge(point)
     local badge = CreateFrame("Frame", "MyProfessionsBadge", ProfessionMicroButton)
     badge:SetSize(20, 20)
     badge:SetFrameStrata("MEDIUM")
@@ -216,28 +216,28 @@ end
 
 local f = CreateFrame("Frame")
 
-f.badgeProf1 = createBadge("TOPRIGHT")
-f.badgeProf2 = createBadge("TOPLEFT")
+f.badgeProfession1 = CreateBadge("TOPRIGHT")
+f.badgeProfession2 = CreateBadge("TOPLEFT")
 
-function f:UpdateProf1Badge()
-    local text = getKPweeklyRemaining(self.prof1)
+function f:UpdateProfession1Badge()
+    local count = GetKPweeklyRemaining(self.profession1)
 
-    if text and #text > 0 then
-        self.badgeProf1.text:SetText(text)
-        self.badgeProf1:Show()
+    if count and count > 0 then
+        self.badgeProfession1.text:SetText(tostring(count))
+        self.badgeProfession1:Show()
     else
-        self.badgeProf1:Hide()
+        self.badgeProfession1:Hide()
     end
 end
 
-function f:UpdateProf2Badge()
-    local text = getKPweeklyRemaining(self.prof2)
+function f:UpdateProfession2Badge()
+    local count = GetKPweeklyRemaining(self.profession2)
 
-    if text and #text > 0 then
-        self.badgeProf2.text:SetText(text)
-        self.badgeProf2:Show()
+    if count and count > 0 then
+        self.badgeProfession2.text:SetText(tostring(count))
+        self.badgeProfession2:Show()
     else
-        self.badgeProf2:Hide()
+        self.badgeProfession2:Hide()
     end
 end
 
@@ -245,70 +245,57 @@ f:RegisterEvent("PLAYER_LOGIN")
 f:RegisterEvent("QUEST_TURNED_IN")
 f:RegisterEvent("BAG_UPDATE")
 f:SetScript("OnEvent", function(self, event, ...)
-    local prof1, prof2 = GetProfessions()
+    local profession1, profession2 = GetProfessions()
 
     if event == "PLAYER_LOGIN" then
-        self.prof1 = getProfessionDetails(prof1)
-        self.prof2 = getProfessionDetails(prof2)
+        self.profession1 = GetProfessionDetails(profession1)
+        self.profession2 = GetProfessionDetails(profession2)
     end
 
-    self:UpdateProf1Badge()
-    self:UpdateProf2Badge()
+    self:UpdateProfession1Badge()
+    self:UpdateProfession2Badge()
 end)
 
+local function CreateTooltipText(profession)
+    if not IsKPProfession(profession) then return "" end
 
-
-local function addKPprogressText(profession)
-    return " [" .. profession.currentKP .. "/" .. profession.maxKP .. "]"
-end
-
-local function addProfHeader(profession, objRemaining)
-    return "|cFFFFD100"..profession.name.."|r" .. addKPprogressText(profession)
-end
-
-local function addObjectiveText(objGroup, objRemaining)
-    return "  " .. objectiveGroups[objGroup].name .. ": " .. objRemaining .. "\n"
-end
-
-local function composeProfText(profession)
-    if not isKPProfession(profession) then return "" end
-
-    local detailedText = ""
+    local detailsText = ""
     local allObjRemaining = 0
 
-    if not profHasMaxKP(profession.skillLineID, profession.configID) then
-        checkProfObjectives(profession, function(objRemaining, objCompleted, objGroup)
+    if not HasMaxKP(profession.skillLineID, profession.configID) then
+        CheckProfessionObjectives(profession, function(objRemaining, objCompleted, objGroup)
             allObjRemaining = allObjRemaining + objRemaining
 
             if not objCompleted then
-                detailedText = detailedText .. addObjectiveText(objGroup, objRemaining)
+                local objectiveText = "  " .. OBJECTIVE_GROUPS[objGroup].name .. ": " .. objRemaining .. "\n"
+                detailsText = detailsText .. objectiveText
             end
         end)
 
-        if #detailedText <= 0 then
-            detailedText = "  Week done!"
+        if #detailsText <= 0 then
+            detailsText = "  Week done!"
         end
     else
-        detailedText = "  All done!"
+        detailsText = "  All done!"
     end
 
-    local profText = "\n" .. addProfHeader(profession, allObjRemaining) .. "\n"
-    profText = profText .. detailedText
+    local kPprogressText = " [" .. profession.currentKP .. "/" .. profession.maxKP .. "]"
+    local headerText = "|cFFFFD100"..profession.name.."|r" .. kPprogressText
 
-    return profText
+    return "\n" .. headerText .. "\n" .. detailsText
 end
 
 ProfessionMicroButton:HookScript("OnEnter", function(self)
     if GameTooltip:IsOwned(self) then
 
-        if f.prof1 then
-            f.prof1.currentKP, f.prof1.maxKP = getKPprogress(f.prof1)
-            GameTooltip:AddLine(composeProfText(f.prof1), 1, 1, 1, true)
+        if f.profession1 then
+            f.profession1.currentKP, f.profession1.maxKP = GetKPprogress(f.profession1)
+            GameTooltip:AddLine(CreateTooltipText(f.profession1), 1, 1, 1, true)
         end
 
-        if f.prof2 then
-            f.prof2.currentKP, f.prof2.maxKP = getKPprogress(f.prof2)
-            GameTooltip:AddLine(composeProfText(f.prof2), 1, 1, 1, true)
+        if f.profession2 then
+            f.profession2.currentKP, f.profession2.maxKP = GetKPprogress(f.profession2)
+            GameTooltip:AddLine(CreateTooltipText(f.profession2), 1, 1, 1, true)
         end
 
         GameTooltip:Show()
