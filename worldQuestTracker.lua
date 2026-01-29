@@ -90,7 +90,8 @@ local function ProcessQuest(questID)
     if questTagInfo and not C_QuestLog.IsComplete(questID) then
         --print("Evaluating quest "..id.."/"..qInfo.mapID.."/"..C_QuestLog.GetTitleForQuestID(questID))
         local goldAmount = GetTotalGoldFromQuest(questID) or 0
-        
+        local minutesLeft= C_TaskQuest.GetQuestTimeLeftMinutes(questID) or 0
+
         -- only quests that reward more than 500 gold
         if goldAmount > (500 * 10000) then
             local quest = {
@@ -98,6 +99,7 @@ local function ProcessQuest(questID)
                 name = C_QuestLog.GetTitleForQuestID(questID) or "Unknown Quest",
                 amount = goldAmount,
                 tagInfo = questTagInfo,
+                minutesLeft = minutesLeft,
                 zone = zone
             }
             FOUND_WORLD_QUESTS[quest.ID] = quest
@@ -305,7 +307,7 @@ function WorldQuestsPanelMixin:RefreshList()
 
     local sortedQuests = {}
     for _, quest in pairs(FOUND_WORLD_QUESTS) do
-        quest.minutesLeft = C_TaskQuest.GetQuestTimeLeftMinutes(quest.ID) or 0
+        quest.minutesLeft = C_TaskQuest.GetQuestTimeLeftMinutes(quest.ID) or quest.minutesLeft or 0
         table.insert(sortedQuests, quest)
     end
     table.sort(sortedQuests, function(a, b) return a.minutesLeft < b.minutesLeft end)
