@@ -11,6 +11,7 @@ local WORLD_QUEST_ZONES = {
 }
 
 local QUEST_SCAN_RATE = 5 * 60
+local SCAN_IN_PROGRESS = false
 local MAPS_TO_SCAN = {}
 local WORLD_QUESTS_TO_SCAN = {}
 local FOUND_WORLD_QUESTS = {}
@@ -127,6 +128,8 @@ local function ProcessQuests()
 
     UpdateUI(count)
 
+    SCAN_IN_PROGRESS = false
+
     C_Timer.After(QUEST_SCAN_RATE, ScanForGoldQuests)
 end
 
@@ -196,6 +199,8 @@ local function RefreshMaps()
 end
 
 ScanForGoldQuests = function()
+    if SCAN_IN_PROGRESS then return end
+
     if UnitAffectingCombat("player") or IsInInstance() then
         C_Timer.After(QUEST_SCAN_RATE, ScanForGoldQuests)
         return
@@ -204,6 +209,8 @@ ScanForGoldQuests = function()
     if f.worldQuestBadge:IsShown() then
         f.worldQuestBadge.text:SetText("*")
     end
+
+    SCAN_IN_PROGRESS = true
 
     FOUND_WORLD_QUESTS = {}
 
