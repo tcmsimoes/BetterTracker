@@ -83,7 +83,7 @@ local function GetTotalGoldFromQuest(questID)
     return math.floor((tonumber(totalMoney) / 10000)) * 10000
 end
 
-local function ProcessQuest(questID)
+local function ProcessQuest(questID, zone)
     local result = 0
 
     local questTagInfo = C_QuestLog.GetQuestTagInfo(questID)
@@ -100,8 +100,8 @@ local function ProcessQuest(questID)
                 name = C_QuestLog.GetTitleForQuestID(questID) or "Unknown Quest",
                 amount = goldAmount,
                 tagInfo = questTagInfo,
-                minutesLeft = minutesLeft,
-                zone = zone
+                minutesLeft = minutesLeft or 0,
+                zone = zone or "Unknown Zone"
             }
             FOUND_WORLD_QUESTS[quest.ID] = quest
             --print("Found quest "..quest.zoneID.."/"..quest.mapID.."/"..quest.name.." = "..GetMoneyString(quest.amount, true))
@@ -120,7 +120,7 @@ local function ProcessQuests()
 
     for questID, zone in pairs(WORLD_QUESTS_TO_SCAN) do
         if not FOUND_WORLD_QUESTS[questID] then
-            count = count + ProcessQuest(questID)
+            count = count + ProcessQuest(questID, zone)
         end
     end
 
@@ -317,7 +317,13 @@ function WorldQuestsPanelMixin:RefreshList()
         quest.minutesLeft = C_TaskQuest.GetQuestTimeLeftMinutes(quest.ID) or quest.minutesLeft or 0
         table.insert(sortedQuests, quest)
     end
-    table.sort(sortedQuests, function(a, b) return a.minutesLeft < b.minutesLeft end)
+    table.sort(sortedQuests, function(a, b)
+        if a.minutesLeft ~= b.minutesLeft then
+            return a.minutesLeft < b.minutesLeft
+        end
+
+        return a.zone < b.zone
+    end)
 
     local container = self.ScrollFrame.ScrollChild
 
