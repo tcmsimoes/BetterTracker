@@ -66,14 +66,12 @@ local function GetTotalGoldFromQuest(questID)
 
     local moneyReward = GetQuestLogRewardMoney(questID)
     if moneyReward and moneyReward > 0 then
-        --print("  moneyReward: "..moneyReward)
         totalMoney = totalMoney + moneyReward
     end
 
     local currencies = C_QuestLog.GetQuestRewardCurrencies(questID)
     if currencies then
         for _, currency in ipairs(currencies) do
-            --print("  currency ID: "..currency.currencyID.." name: "..currency.name.." amount: "..currency.totalRewardAmount)
             if currency.currencyID == 0 or currency.name == "Gold" then
                 totalMoney = totalMoney + (currency.totalRewardAmount or 0)
             end
@@ -89,7 +87,6 @@ local function ProcessQuest(questID, zone)
     local questTagInfo = C_QuestLog.GetQuestTagInfo(questID)
 
     if questTagInfo and not C_QuestLog.IsComplete(questID) then
-        --print("Evaluating quest "..id.."/"..qInfo.mapID.."/"..C_QuestLog.GetTitleForQuestID(questID))
         local goldAmount = GetTotalGoldFromQuest(questID) or 0
         local minutesLeft= C_TaskQuest.GetQuestTimeLeftMinutes(questID) or 0
 
@@ -98,13 +95,12 @@ local function ProcessQuest(questID, zone)
             local quest = {
                 ID = questID,
                 name = C_QuestLog.GetTitleForQuestID(questID) or "Unknown Quest",
-                amount = goldAmount,
+                amount = math.floor(goldAmount / 10000) * 10000,
                 tagInfo = questTagInfo,
                 minutesLeft = minutesLeft or 0,
                 zone = zone or "Unknown Zone"
             }
             FOUND_WORLD_QUESTS[quest.ID] = quest
-            --print("Found quest "..quest.zoneID.."/"..quest.mapID.."/"..quest.name.." = "..GetMoneyString(quest.amount, true))
             result = 1
         end
     end
@@ -123,8 +119,6 @@ local function ProcessQuests()
             count = count + ProcessQuest(questID, zone)
         end
     end
-
-    --print("|cFFADD8E6Finished scanning found "..tostring(count).." gold world quests")
 
     UpdateUI(count)
 
@@ -177,7 +171,7 @@ local function DrillThroughMaps(mapInfo)
         MAPS_TO_SCAN[mapInfo.parentMapID] = mapInfo.name
 
         local parentMapInfo = C_Map.GetMapInfo(mapInfo.parentMapID)
-        -- This is the "secret sauce" - requesting the ArtID often forces a data sync
+        -- Requesting the ArtID to try to force a data sync
         local _ = C_Map.GetMapArtID(mapInfo.parentMapID)
 
         DrillThroughMaps(parentMapInfo)
@@ -189,7 +183,7 @@ local function RefreshMaps()
         MAPS_TO_SCAN[mapID] = zone
 
         local mapInfo = C_Map.GetMapInfo(mapID)
-        -- This is the "secret sauce" - requesting the ArtID often forces a data sync
+        -- Requesting the ArtID to try to force a data sync
         local _ = C_Map.GetMapArtID(mapID)
 
         DrillThroughMaps(mapInfo)
@@ -339,6 +333,8 @@ function WorldQuestsPanelMixin:RefreshList()
         entry.questID = quest.ID
         entry.questName = quest.name
         entry.minutesLeft = quest.minutesLeft
+        entry.zone = quest.zone
+        entry.amount = quest.amount
 
         local atlas, width, height = QuestUtil.GetWorldQuestAtlasInfo(quest.ID, quest.tagInfo, false);
         if atlas then
@@ -367,10 +363,9 @@ function WorldQuestsPanelMixin:RefreshList()
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 
             if GameTooltip:IsOwned(self) then
-                GameTooltip:SetText("Time left: "..FormatQuestTime(self.minutesLeft), NORMAL_FONT_COLOR:GetRGB());
-                GameTooltip:AddLine("Rewards:", NORMAL_FONT_COLOR:GetRGB());
-                GameTooltip_AddQuestRewardsToTooltip(GameTooltip, self.questID, TOOLTIP_QUEST_REWARDS_STYLE_NONE);
-                GameTooltip_SetTooltipWaitingForData(GameTooltip, false);
+                GameTooltip:SetText("Time left: " .. FormatQuestTime(self.minutesLeft), NORMAL_FONT_COLOR:GetRGB());
+                GameTooltip:AddLine("|cFFFFD100Zone:|r " .. self.zone, 1, 1, 1, true)
+                GameTooltip:AddLine("|cFFFFD100Gold:|r " .. GetMoneyString(self.amount), 1, 1, 1, true)
                 GameTooltip:Show()
             end
         end)
