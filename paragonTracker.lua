@@ -144,7 +144,7 @@ local function GetAvailableParagonCaches()
         end
 
         if endIndex < #factionQueue then
-            C_Timer.After(0.01, function() ScanParagonBatch(endIndex + 1) end)
+            C_Timer.After(0.1, function() ScanParagonBatch(endIndex + 1) end)
         else
             UpdateParagonBadge()
 
