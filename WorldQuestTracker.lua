@@ -1,6 +1,6 @@
 local _, _A = ...
 
-
+local TAB_DISPLAY_MODE = 4
 local SCAN_RATE = 5 * 60
 
 
@@ -235,7 +235,7 @@ function WorldQuestTabMixin:OnClick()
     else
         QuestMapFrame.WorldQuestsPanel:RefreshList()
 
-        QuestMapFrame:SetDisplayMode(self.displayMode)
+        QuestMapFrame:SetDisplayMode(TAB_DISPLAY_MODE)
     end
 end
 
@@ -310,26 +310,31 @@ function WorldQuestsPanelMixin:RefreshList()
             C_QuestLog.AddWorldQuestWatch(self.questID, Enum.QuestWatchType.Manual)
         end)
 
-        entry:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText("Time left: "..panel:FormatQuestTime(self.minutesLeft), NORMAL_FONT_COLOR:GetRGB())
-            GameTooltip:AddLine("|cFFFFD100Zone:|r "..self.zone, 1, 1, 1, true)
-            if self.faction then
-                GameTooltip:AddLine("|cFFFFD100Faction:|r "..self.faction, 1, 1, 1, true)
-            end
-            -- GameTooltip_AddQuestRewardsToTooltip(GameTooltip, self.questID)
-            if self.amount > 0 then
-                GameTooltip:AddLine("|cFFFFD100Gold:|r "..GetMoneyString(self.amount, true), 1, 1, 1, true)
-            end
-            GameTooltip:Show()
-        end)
+        if not entry.hooksAttached then
+            entry:HookScript("OnEnter", function(self)
+                GameTooltip:ClearLines()
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText("Time left: "..panel:FormatQuestTime(self.minutesLeft), NORMAL_FONT_COLOR:GetRGB())
+                GameTooltip:AddLine("|cFFFFD100Zone:|r "..self.zone, 1, 1, 1, true)
+                if self.faction then
+                    GameTooltip:AddLine("|cFFFFD100Faction:|r "..self.faction, 1, 1, 1, true)
+                end
+                -- GameTooltip_AddQuestRewardsToTooltip(GameTooltip, self.questID)
+                if self.amount > 0 then
+                    GameTooltip:AddLine("|cFFFFD100Gold:|r "..GetMoneyString(self.amount, true), 1, 1, 1, true)
+                end
+                GameTooltip:Show()
+            end)
 
-        entry:SetScript("OnLeave", function(self)
-            if GameTooltip:IsOwned(self) then
-                GameTooltip:Hide()
-                GameTooltip.questID = nil
-            end
-        end)
+            entry:HookScript("OnLeave", function(self)
+                if GameTooltip:IsOwned(self) then
+                    GameTooltip:Hide()
+                    GameTooltip.questID = nil
+                end
+            end)
+
+            entry.hooksAttached = true
+        end
 
         entry:Show()
     end
