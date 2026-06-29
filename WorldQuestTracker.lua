@@ -1,4 +1,4 @@
-local _, _A = ...
+local ADDON_NAME, _A = ...
 
 local TAB_DISPLAY_MODE = 4
 local SCAN_RATE = 5 * 60
@@ -212,7 +212,7 @@ QuestLogMicroButton:HookScript("OnEnter", function(self)
         for _, data in pairs(_A.FoundWorldQuests:GetQuests()) do
             totalGold = totalGold + data.amount
         end
-        GameTooltip:AddLine("\nTotal Gold available: "..GetMoneyString(totalGold, true), 1, 1, 1, true)
+        GameTooltip:AddLine("\nTotal Gold available: " .. GetMoneyString(totalGold, true), 1, 1, 1, true)
         GameTooltip:Show()
     end
 end)
@@ -372,14 +372,14 @@ SlashCmdList["WorldQuestTracker"] = function(arg)
         local value = tonumber(msg:match("^set%s+(%d+)$"))
         if value and value >= 1 then
             SavedVars.MinGoldReward = value * 10000
-            print("|cffB0C4DE[WorldQuestTracker]|r Minimum gold reward set to "..GetMoneyString(SavedVars.MinGoldReward, true))
+            print("|cffB0C4DE["..ADDON_NAME.."]|r Minimum gold reward set to "..GetMoneyString(SavedVars.MinGoldReward, true))
 
             WorldQuestTracker:ResetQuests()
         end
     elseif msg == "show" then
-        print("|cffB0C4DE[WorldQuestTracker]|r Minimum gold reward is "..GetMoneyString(SavedVars.MinGoldReward, true))
+        print("|cffB0C4DE["..ADDON_NAME.."]|r Minimum gold reward is "..GetMoneyString(SavedVars.MinGoldReward, true))
     else
-        print("|cffB0C4DE[WorldQuestTracker]|r Commands:")
+        print("|cffB0C4DE["..ADDON_NAME.."]|r Commands:")
         print("  /bwq set <value> - Set the minimum gold reward amount")
         print("  /bwq show - Prints the minimum gold reward amount")
     end

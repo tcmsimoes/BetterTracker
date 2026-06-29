@@ -11,6 +11,7 @@ _A.WorldQuestsZones = {
     [2576] = "Harandar - The Den",
     [2405] = "Voidstorm",
     [2444] = "Voidstorm - Bloodplains",
+    [2600] = "Naigtal",
 }
 local WorldQuestsZones = _A.WorldQuestsZones
 

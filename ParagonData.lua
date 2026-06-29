@@ -6,6 +6,7 @@ _A.ParagonFactions = {
     [2696] = "Amani Tribe",
     [2704] = "Hara'ti",
     [2699] = "The Singularity",
+    [2770] = "Slayers Duellum",
 
     -- The War Within
     [2590] = "Council of Dornogal",
