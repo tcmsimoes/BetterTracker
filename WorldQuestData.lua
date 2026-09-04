@@ -12,6 +12,7 @@ _A.WorldQuestsZones = {
     [2405] = "Voidstorm",
     [2444] = "Voidstorm - Bloodplains",
     [2600] = "Naigtal",
+    [2512] = "The Coiled Isle",
 }
 local WorldQuestsZones = _A.WorldQuestsZones
 
